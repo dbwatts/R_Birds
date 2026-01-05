@@ -1,0 +1,1087 @@
+---
+title: "Personal Project!"
+subtitle: "Deanne Watts, December 19th, 2025 (BIOL 3383)"
+format: html
+editor: visual
+toc: true
+theme: "minty"
+fontcolor: "#0E0882"
+title-block-banner: true
+---
+
+# Exploring the Avonet Bird Life dataset
+
+::: callout-note
+## Note to User
+
+Several R packages need to be installed prior to successfully running this script. If not already installed, please copy and paste the below script into your console, and remove the opening '\#' to install the required packages:
+:::
+
+```{r}
+#| code-fold: true #specifying a code fold for this chunk
+#| code-summary: "Show code" #label for code fold drop down
+#| echo: true #show the source code for chunk in output 
+
+#install.packages(c("tidyverse", "gt", "sf", "ggmap", "ggplot2", "ggspatial", "leaflet", "mapview", "htmlwidgets", "maps", "rnaturalearth", "webshot2", "rsvg", "magick"))
+```
+
+```{r}
+#| code-fold: true #specifying a code fold for this chunk
+#| code-summary: "Show code" #label for code fold drop down
+#| echo: true #show the source code for chunk in output 
+#| warning: false #ensuring warning does not appear in final output
+
+# Load libraries for tidyverse, gt (for table generation), sf for reading shapefiles if needed, ggmap for mapping, ggplot2 for mapping, ggspatial for combining spatial data with plotting library for mapping, leaflet for interactive leaflet map, mapview for enabling interactive visualizations, html widgets for sale bars etc. on interactive maps. 
+library(tidyverse) 
+library(gt) 
+library(sf)
+library(ggmap)
+library(ggplot2)
+library(ggspatial)
+library(dplyr)
+library(leaflet)
+library(mapview)
+library(htmlwidgets)
+library(maps)
+library(rnaturalearth) # For natural earth map data
+library(webshot2)
+library(magick)
+library(rsvg)
+library(modelr)
+```
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-birds
+#| fig-cap: "Birds and birds and birds and birds!"
+
+# Loading in bird images from unsplash (free licence) to use in bird animation
+bird1 <- image_read("https://images.unsplash.com/photo-1531275467514-94da595cf8d7?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird2 <- image_read("https://images.unsplash.com/photo-1535083783855-76ae62b2914e?q=80&w=870&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird3 <- image_read("https://images.unsplash.com/photo-1601544829024-bc7f4c2213c5?q=80&w=942&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird4 <- image_read("https://images.unsplash.com/photo-1548960095-770e3e6364de?q=80&w=770&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird5 <- image_read("https://images.unsplash.com/photo-1518992028580-6d57bd80f2dd?q=80&w=2630&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird6 <- image_read("https://images.unsplash.com/photo-1490718720478-364a07a997cd?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird7 <- image_read("https://images.unsplash.com/photo-1606567595334-d39972c85dbe?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird8 <- image_read("https://images.unsplash.com/photo-1612311683149-939135aa6afa?q=80&w=2141&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird9 <- image_read("https://images.unsplash.com/photo-1585533530535-2f4236949d08?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird10 <- image_read("https://images.unsplash.com/photo-1660437083689-13c5b400f7c3?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird11 <- image_read("https://images.unsplash.com/photo-1592964378097-281cab4a12a5?q=80&w=782&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird12 <- image_read("https://images.unsplash.com/photo-1715424081094-c8ae410ca79c?q=80&w=872&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird13 <- image_read("https://images.unsplash.com/photo-1615145531149-8c22c520f8c0?q=80&w=928&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird14 <- image_read("https://images.unsplash.com/photo-1576621068847-d3d4a7ef4864?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird15 <- image_read("https://images.unsplash.com/photo-1630977125862-9e61a0ac2a71?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+bird16 <- image_read("https://images.unsplash.com/photo-1660437083689-13c5b400f7c3?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D")
+
+#concatenating all bird images into one vector for animation
+birds <- c(bird1, bird2, bird3, bird4, bird5, bird6, bird7, bird8, bird9, bird10, bird11, bird12, bird13, bird14, bird15)
+
+#create animation 
+birds_animate <- birds %>%
+  #resize all images to the same dimensions, "!" forces the resize 
+  image_resize('400x600!') %>%
+  #specifying background colour
+  image_background('white') %>%
+  #specifying number of frames to generate between images
+  image_morph(frames = 10) %>%
+  #specifying frames per second, optimizing for faster rendering 
+  image_animate(fps = 10, optimize = TRUE)  
+
+#view animation
+birds_animate
+```
+
+## Data cleaning & Import
+
+### Data import, review and cleaning
+
+To begin the investigation into the Avonet Bird Life dataset, I first had to load in the raw, .csv file, then explore and clean the dataset. Using various methods like select(), rename(), and filter(), I removed unnecessary variables, renamed remaining variables for clarity and to include units where applicable, and filtered out NA and outlier values. From here, I generated a new dataset using write.csv(), to create a new, cleaned dataset. From there, I reloaded that clean dataset into my script for further analysis. A summary of my data cleaning process is visualized in the following flowchart:
+
+```{mermaid}
+flowchart LR
+  A{Import raw data} --> B[Clean raw data]
+  
+  B --> C(Remove unnecessary variables)
+  B --> D(Rename variables for clarity)
+  B --> E(Remove NA values <br> and outliers)
+  
+  C --> F[Create new clean dataset]
+  D --> F[Create new clean dataset]
+  E --> F[Export new clean dataset]
+  
+  F --> G{Reimport new cleaned dataset for <br> further analysis}
+```
+
+```{r, message=FALSE}
+#| code-fold: true #specifying a code fold for this chunk
+#| code-summary: "Show code" #label for code fold drop down
+#| echo: true #show the source code for chunk in output 
+#| warning: false #ensuring warning does not appear in final output
+
+#### Import Data #### 
+# import  bird data via relative path in Data folder 
+# na.strings = c("NA", "") turns any NA or spaces into proper "NA" upon import
+birddata <- read.csv("Data/AVONET1_BirdLife.csv", na.strings = c("NA", ""))
+
+##### remove unneeded variables in Dataset #####
+birddata <- birddata %>% #creating new dataframe, "birddata" for cleaning
+  select(-Sequence,-Avibase.ID1, -Mass.Source, -Inference, -Traits.inferred, -Reference.species, -Mass.Refs.Other, -Hand.Wing.Index) #using select() function and "-" to remove unnecessary variables from new dataset
+
+
+#### Renaming variables####
+birddata_clean <- birddata %>% #applying to new dataframe
+  rename( #using the rename() function to specify cleaner names for variables, inclusive of units where required
+         Species = Species1, #Label on the left of the = is the new variable name, label on the right of the = is the previous variable name
+         Family = Family1,
+         Order = Order1,
+         Total_individuals = Total.individuals,
+         Unknown_sex = Unknown,
+         Complete_measures = Complete.measures,
+         Beak_culmen_mm = Beak.Length_Culmen,
+         Beak_nares_mm = Beak.Length_Nares,
+         Beak_width_mm = Beak.Width,
+         Beak_depth_mm = Beak.Depth,
+         Tarsus_length_mm = Tarsus.Length,
+         Wing_length_mm = Wing.Length,
+         Kipps_distance_mm = Kipps.Distance,
+         Secondary_length_mm = Secondary1,
+         Tail_length_mm = Tail.Length,
+         Mass_g = Mass,
+         Habitat_density = Habitat.Density,
+         Trophic_level = Trophic.Level,
+         Trophic_niche = Trophic.Niche,
+         Primary_lifestyle = Primary.Lifestyle,
+         Min_lat = Min.Latitude,
+         Max_lat = Max.Latitude,
+         Centroid_lat = Centroid.Latitude,
+         Centroid_long = Centroid.Longitude,
+         Range_size_km2 = Range.Size) 
+
+#view new dataset
+view(birddata)
+
+#### Removing NAs from dataset####
+birddata_clean <- birddata_clean %>% #applying to new dataset
+  filter( #using filter() function, and "!is.na" to remove any records of NA from specified variables
+    !is.na(Species),
+    !is.na(Family),
+    !is.na(Order),
+    !is.na(Total_individuals),
+    !is.na(Unknown_sex),
+    !is.na(Complete_measures),
+    !is.na(Beak_culmen_mm),
+    !is.na(Beak_nares_mm),
+    !is.na(Beak_width_mm),
+    !is.na(Beak_depth_mm),
+    !is.na(Tarsus_length_mm),
+    !is.na(Wing_length_mm),
+    !is.na(Kipps_distance_mm),
+    !is.na(Secondary_length_mm),
+    !is.na(Tail_length_mm),
+    !is.na(Mass_g),
+    !is.na(Habitat_density),
+    !is.na(Migration),
+    !is.na(Trophic_level),
+    !is.na(Trophic_niche),
+    !is.na(Primary_lifestyle),
+    !is.na(Min_lat),
+    !is.na(Max_lat),
+    !is.na(Centroid_lat),
+    !is.na(Centroid_long),
+    !is.na(Range_size_km2)) %>%
+  filter(
+  #using filter() function to remove outlier/error data values. Using a value of 0.1, as       there were anomalies in some variables with records of 0.1 which seemed to be outliers.
+    Beak_culmen_mm > 0.1, Beak_nares_mm > 0.1, Beak_width_mm > 0.1, Beak_depth_mm > 0.1, Tarsus_length_mm > 0.1, Wing_length_mm > 0.1, Kipps_distance_mm > 0.1, Secondary_length_mm > 0.1, Tail_length_mm > 0.1, Mass_g > 0.1 ) 
+
+####Generate Clean Dataset####
+#using write.csv() function to create new, clean dataset for further analyis ["birddata_clean" calls on dataframe within script, "Data/birddata_clean.csv" instructs where to save via relative path, "row.names = FALSE" instructs to remove otherwise default row name column from csv]
+write.csv(birddata_clean, "Data/birddata_clean.csv", row.names = FALSE)
+```
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+# import new, clean dataset via relative path in Data folder 
+# na.strings = c("NA", "") turns any NA or spaces into proper "NA" upon import
+mydata <- read.csv("Data/birddata_clean.csv", na.strings = c("NA", ""))
+```
+
+## Raw data visualizations
+
+### Wing length against beak culmen length
+
+@Fig-2 uses the ggplot() library to visualize the relationship between beak length and wing length, drawn from the raw (but cleaned) dataset. I plotted all species observations in a scatter plot using beak length on the x-axis and wing length on the y-axis. As visualized in the output scatter plot, there appears to be an overall positive relationship between beak and wing length, though the scatter spread increases for larger measurements. This suggests that while many species follow a similar proportional pattern between wing and beak lengths at smaller sizes, there is greater variability among species with longer wings and/or beaks.
+
+Beak culmen length is defined as the length from the tip of the beak to the base of the skull (mm). Wing length is defined as the length from the carpal joint (bend of the wing) to the tip of the longest primary on the unflattened wing (mm).
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+
+#loading .png file from directory using image_read()
+measurements <- image_read("images/Measurements-01.png")
+
+#adding annotation to diagram, applying a title for the image
+#using \n for line breaks
+image_annotate(measurements, " Beak and Wing \n Measurement diagram ", 
+               #specifying font size
+               size = 70, 
+               #specifying location of annotation
+               gravity = "northeast", 
+               #specifying colour
+               color = "#3c6258",
+               #specifying text box colour
+               boxcolor = "#77c3ae")
+```
+
+#### \*\*\*\*\*NEW CONTENT \*\*\*\*\* (updated plot with annotated line segments)
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-2
+#| fig-cap: "Beak culmen length against wing length in bird species"
+
+#creating a new scatter plot (plot1)
+#using ggplot() function to specify what dataframe to use
+plot1 <- ggplot(data = mydata) + 
+  #using geom_point() to add point geometry, mapping wing length on X axis, culmen length on Y axis
+  geom_point(mapping = aes(x=Beak_culmen_mm, y=Wing_length_mm), 
+             #specifying size of point
+             size = 1, 
+             #specifying colour for points
+             color = "#3c6157",
+             #specifying transparency (where 1 is opaque). Enabling transparency to provide reader a better sense of point density, visualizing densely     packed points as opaque from overlap
+             alpha = 0.5) +
+             
+  #specifying a theme for plot 
+  theme_minimal() + 
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  # specifying labels for the X and Y axes 
+  labs(x = "Beak culmen length (mm)",
+       y = "Wing length (mm)", 
+       title = "Beak culmen length against wing length in bird species") +
+ #annotating  line to illustrate fan
+  annotate("segment", 
+          x = 25, xend = 425, 
+          y = 5, yend = 575, 
+          colour = "#26208e", 
+          linewidth = 1, 
+          alpha=0.3)+
+  #annotating second line to illustrate fan
+  annotate("segment", 
+          x = 0, xend = 62, 
+          y = 200, yend = 800, 
+          colour = "#26208e", 
+          linewidth = 1, 
+          alpha=0.3)
+
+#view plot 1
+plot1
+
+```
+
+### Recorded Observations by Trophic Niche
+
+Figure 3 uses ggplot() to create a histogram, visualing the number of observations recorded, categorized by trophic niche. This histogram categorizes the raw data by a categorical variable, Trophic Niche, then counts how many individual observed species fall within each listed niche. As seen in @fig-2, the greatest species count falls within the Invertivore category, with 5272 observed species filling that trophic niche. Only 22 scavenger species were recorded in this dataset.
+
+Some of the visualizations presented below will explore species morphology, so this historgram is intended to provide contextual information about the sample sizes used for further analyses.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+#| fig-align: center
+#| warning: false #ensuring warning does not appear in final output
+#| label: fig-3
+#| fig-cap: "Number of observations by Trophic Niche"
+
+#creating a new histogram plot (plot2)
+#using ggplot() function to specify what dataframe to use
+plot2 <- ggplot(data = mydata) + 
+  #using geom_histogram() to add specify plot type as histogram. Mapping primary lifestyle on X axis. Histogram only requires one variable, as the Y is the count, as specified in "stat = "count"". 
+  geom_histogram(mapping = aes(x = Trophic_niche), stat = "count", color = "#78c2ad", fill = "#3c6157", alpha = 0.8) +
+  #specifying label for individual histogram bars
+  geom_text( 
+    #calculate counts to populate label (same as histogram)
+    stat = "count",
+    #specifying Trophic_niche as x variable, sets label for each count variable
+    aes(x = Trophic_niche, label = ..count.., y = ..count..), 
+    #sets position of label above the bar
+    vjust = -0.3,
+    #specifies text size for label
+    size = 6, 
+    #specifies text colour for label
+    color = "#2a2591") + 
+#setting minimal theme  
+theme_minimal() +
+    #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 20)) +
+  # specifying labels for the X and Y axes 
+  labs(x = "Primary Lifestyles",
+       y = "Number of Observations", 
+       title = "Number of observations by Trophic Niche") +
+  #specifying angled labels for Y axis, to accommodate for long labels (angle of 75degrees, offset of 1, size of 14)
+  theme(axis.text.x = element_text(angle = 75, hjust = 1, size = 14))
+
+
+#Convert ggplot to magick image using image_graph()
+plot2_img <- image_graph(width = 1500, height = 1000, res = 96)
+print(plot2)
+#using invivible() to hide the default output message
+invisible(dev.off())
+
+#load in the secong raster image from file path
+TotalObs <- image_read('images/totalObs-01.jpg')
+
+#Scale the TotalObs image to ~25% size
+TotalObs <- image_scale(TotalObs, "400x400")
+
+# Use image_composite to layer the totalObs image over plot image 
+LayeredPlot2 <- image_composite(plot2_img, TotalObs, 
+                                #specifying location (upper left corner, using format of "+X+Y")
+                                 offset = "+1000+40") 
+
+# Display result
+LayeredPlot2
+
+```
+
+## Data Summaries
+
+### Beak morphology in relationship to trophic niche
+
+Table 1 summarises the mean beak measurements[^1] for the bird observations, categorized by ten trophic niches (see @tbl-1 footnotes). This table was generated by creating a data summary of the input cleaned dataset, and grouping this data by Trophic Niche, which is a categorical variable in the raw dataset. From there, I calculates the mean of each beak measurement (culmen length, beak width, depth, and distance to beak nares), and used the gt() library to generate a clean, formatted table that outlines these meean measurements that are categorized by trophic niche.
+
+[^1]: **Mean culmen length** is defined as the mean of the lengths from the tip of the beak to the base of the skull (mm). **Mean distance to beak nares** is defined as the mean of the lengths from the anterior edge of the nostrils to the tip of the beak (mm). **Mean beak width** is defined as the mean of the widths of the beak at the anterior edge of the nostrils (mm). **Mean beak depth** is defined as the mean of the depths of the beak at the anterior edge of the nostrils (mm).
+
+Results from this table suggest that nectarivores generally have narrower beaks, with a mean beak width of 2.93mm. Given their primary food source is nectar, this makes evolutionary sense, allowing these birds to access nectar easily with their narrow beaks. Scavengers have the largest measurements across all categories, with a mean culmen length of 72.10mm, mean distance to beak nares at 46.78mm, mean beak width of 21.42mm, and mean beak depth of 28.76mm. This may be an evolutionary result of their food sources, suggesting larger beaks aid in the success of bird species filling that trophic niche.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+#| label: tbl-1
+#| tbl-align: center
+#| tbl-cap: "Beak Measurements by Trophic Niche"
+
+######Creating summary for visualizations #######
+
+# create new dataframe (Summ1) to maintain data integrity of previous wrangling
+Summ1 <- mydata %>%
+  group_by(Trophic_niche) %>% #grouping data by Trophic_niche for summary
+  # summarise() function to specify variables to include in summary. Creating new variable names capturing the mean culmen, beak nares, beak width, and beak depths. 
+  summarise( mean_culmen = mean(Beak_culmen_mm, na.rm = TRUE),
+             mean_beaknares = mean(Beak_nares_mm, na.rm = TRUE),
+            mean_beakwidth = mean(Beak_width_mm, na.rm = TRUE),
+            mean_beakdepth = mean(Beak_depth_mm, na.rm = TRUE)) 
+
+# using gt() function to turn the new data frame into a gt table
+summ1_tbl <- gt(Summ1) 
+
+
+######## applying formatting to table ##########
+summ1_tbl <- summ1_tbl %>%
+  # tab_header() function to set and format a title for the table
+  tab_header(
+    # md() function to format title, using "**" for bold
+    title = md("**Beak Measurements by Trophic Niche**")
+  ) %>%
+  # using cols_label() function to rename and format column labels
+  cols_label(
+    # specifying new label for each summarised variable in table, formatting column labels for table using html to allow for bold and line breaks
+    Trophic_niche = html("<b>Trophic niche</b>"),
+    mean_culmen = html("<b>Mean culmen <br>length (mm)</b>"),
+    mean_beaknares = html("<b>Mean distance to <br>beak nares (mm)</b>"),
+    mean_beakwidth = html("<b>Mean beak <br>width (mm)</b>"),
+    mean_beakdepth = html("<b>Mean beak <br>depth (mm)</b>")) %>% 
+    # formatting numbers in each specified column to round to 2 decimal places
+    fmt_number(
+      # c() function to select more than one column
+      columns = c(mean_culmen, 
+                  mean_beaknares, 
+                  mean_beakwidth, 
+                  mean_beakdepth),
+      decimals = 2) %>%
+  #adding table footnote for trophic niche definitions, using html function for formatting
+  tab_footnote(
+    footnote = html("<small> <b>Aquatic Predator:</b> species obtaining at least 60% of food resources from vertebrate and invertebrate animals in aquatic systems, including fish, crustacea, molluscs, etc;<br><b>Frugivore:</b> species obtaining at least 60% of food resources from fruit;<br> <b>Granivore:</b> species obtaining at least 60% of food resources from seeds or nuts;<br> <b>Herbivore aquatic:</b> species obtaining at least 60% of food resources from plant materials in aquatic systems, including algae and aquatic plant leaves;<br> <b>Invertivore:</b> species obtaining at least 60% of food resources from invertebrates in terrestrial systems, including insects, worms, arachnids, etc.;<br> <b>Nectarivore:</b> species obtaining at least 60% of food resources from nectar;<br><b>Omnivore:</b> Species using multiple niches, within or across trophic levels, in relatively equal proportions.<br><b>Scavenger:</b> species obtaining at least 60% of food resources from carrion, offal or refuse;<br><b>Vertivore:</b> species obtaining at least 60% of food resources from vertebrate animals in terrestrial systems, including mammals, birds, reptiles etc. </small>"),
+ #specifying which column to tie footnote to, i.e. definitions tied to trophic_niche
+ locations = cells_column_labels(columns = Trophic_niche)) %>%
+  #setting parameters to left-justify footnotes in the table
+  tab_style(
+    #left-justify text
+    style = cell_text(align = "left"),
+    #specify footnotes as cells to left-justify 
+    locations = cells_footnotes()
+  ) 
+
+# view new table
+summ1_tbl
+
+```
+
+### Visualizing beak morphology in relationship to trophic niche
+
+@fig-4 complements Table 1 by visualizing the varying comparative mean beak measurements by trophic niche. To generate this plot, I used the mean calculations from @tbl-1, above, and categorized each mean beak measurement into their trophic niche category. By then mapping colour-coded points at each categorized measurement, along with matching colour-coded lines to link the trends, a reader can quickly visualize patterns in bean measurements.
+
+This plot visualizes mean beak measurements across the trophic niches, allowing readers to quickly discern triophic niche categories with the smallest and largest beak sizes, and everything in between. An interesting trend that emerges, when visualized in this type of plot, is the beak morphology of bird species who fall into the aquatic predator niche. Species that fill the aquatic predator category, seem to have relatively long but narrow and shallow beaks. Another interesting trend shown by this plot, is that Granivores have very small beaks, with small, proportional beak measurements across each mean measurement category, suggesting relatively small, uniformly shaped beaks. Through analysing the lines across the plot, readers can also see that the mean width and mean depth are very similar across most trophic niches.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-4
+#| fig-cap: "Mean beak measurements by Trophic Niche"
+
+#creating new plot for beak measurement visualization, summarized by trophic niche
+plot_beaks <- ggplot(Summ1, aes(x = Trophic_niche)) + 
+  #specifying various points and lines to plot on the graph, with each variable having both a geom_point() and geom_line() to visualize the trends
+  #creating points for mean_culmen
+  geom_point(aes(y = mean_culmen, color = "Mean Culmen length")) + 
+  #connecting culmen points with geom_line() function. "group = 1" instructs ggplot to treat   all points as one group and connect them in order across  x-axis
+  geom_line(aes(y = mean_culmen, color = "Mean Culmen length", group = 1)) + 
+  geom_point(aes(y = mean_beaknares, color = "Mean distance to nares")) +
+  geom_line(aes(y = mean_beaknares, color = "Mean distance to nares", group = 1)) +
+  geom_point(aes(y = mean_beakwidth, color = "Mean width")) +
+  geom_line(aes(y = mean_beakwidth, color = "Mean width", group = 1)) + 
+  geom_point(aes(y = mean_beakdepth, color = "Mean depth")) +
+  geom_line(aes(y = mean_beakdepth, color = "Mean depth", group = 1)) +
+  #specifying labels for axes, legend, and title
+  labs(
+    x = "Trophic niche",
+    y = "Mean measurement (mm)",
+    color = "Beak measurement", 
+    title = "Mean beak measurements by trophic niche") +
+  #calling on ColorBrewer "Set2" for colour scheme on plot
+  scale_color_brewer(palette = "Set2") +
+  #applying minimal theme to plot
+  theme_minimal() +
+    #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  #specifying angled labels for Y axis, to accommodate for long labels (angle of 75degrees,    offset of 1)
+  theme(axis.text.x = element_text(angle = 75, hjust = 1))
+
+#view plot
+plot_beaks
+
+```
+
+### Trophic niches as they relate to habitat types
+
+Table 2 captures eleven habitat types, broken down by the trophic niches observed within each habitat. The table lists the number of distinct species observed within each trophic niche, categorized by habitat type, along with a percentage indicating the proportion of that trophic niche within each habitat. This percentage was calculated by dividing the number of distinct species in each trophic niche by the total number of species in that habitat, then multiplying by 100:
+
+$$\text{Percent} = \frac{\text{Number of species in trophic niche}}{\text{Total species in habitat}} \times 100$$ This table is intended to present trophic niche presence as "parts of a whole" habitat type, helping to show the extent of trophic diversity in each specified habitat type. It is intersting to see the diversity of different habitats, especially when comparing habitat types that may be perceived as relatively similar. In the coastal habitat, there are only three trophic niches observed to be present from the dataset, compared to the wetland habitat with eight trophic niches observed to be present
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| label: tbl-2
+#| tbl-cap: "Species break-down by habitat"
+
+##### Creating summary for habitat and trophic niche visualization #####
+#creating new summary dataframe, calling on mydata as input
+Summ_habitat <- mydata %>%
+  #verifying no NAs through filter() function and "!is.na", to remove any observations with missing Habitat or Trophic_niche data
+  filter(!is.na(Habitat), !is.na(Trophic_niche)) %>%
+  #Group data by both Habitat and Trophic_niche to calculate counts within each combination
+  group_by(Habitat, Trophic_niche) %>%
+  #creating summary
+  summarise(
+    #Calculate the number of distinct species in each habitat-trophic niche combination
+    n_species = n_distinct(Species),
+    # "[.groups = "drop"]" removes the above specified grouping structure after executing summarise() function
+    .groups = "drop"
+  ) %>%
+  #Re-grouping by Habitat to calculate percentages within each habitat
+  group_by(Habitat) %>%
+  #mutate() function to create new variable, calculate percentage by calculating (total distinct species in niche / total distinct species in that habitat) * 100
+  mutate(percent = n_species / sum(n_species) * 100) %>%
+  #Remove grouping structure again
+  ungroup() %>%
+  #Reorder habitats to group similar types together for easier comparison
+  mutate(Habitat = factor(Habitat, levels = c(
+    # Water-based habitats
+    "Wetland", "Riverine", "Coastal", "Marine",
+    # Terrestrial habitats
+    "Desert", "Rock", "Grassland", "Shrubland", "Woodland", "Forest",
+    # Human-modified habitats
+    "Human Modified"
+  )))
+
+######Format Table######
+#using gt() function to turn the new data frame into a gt table, with habitat as grouping variable
+Summ_habitat_tbl <- gt(Summ_habitat, groupname_col = "Habitat")  %>% 
+    #tab_header() function to set and format a title for the table
+  tab_header(
+    # md() function to format title, using "**" for bold
+    title = md("**Species break-down by habitat**")
+  ) %>%
+  # using cols_label() function to rename and format column labels
+  cols_label(
+    # specifying new label for each summarised variable in table, using html() for bolding and line breaks
+    Trophic_niche = html("<b>Habitat Type,</b><br>Trophic niche"),
+    n_species = html("<b>Number of <br>distinct Species</b>"),
+    percent = html("<b>Percent break-down of <br>Trophic Niche by Habitat</b>")) %>% 
+# Format the percent column to display values with 1 decimal place
+    fmt_number(
+      # Specify which column to format (percent column)
+      columns = c(percent),
+      decimals = 1) %>%
+  # Apply styling to habitat group row headers
+  tab_style(
+    # Set background fill color to light green for visual distinction
+    style = cell_fill(color = "#e7f4f0"),
+    # Apply this style to all row group headers (i.e. the Habitat categories)
+    locations = cells_row_groups()) %>%
+  #adding table footnote for habitat definitions
+  tab_footnote(
+    footnote = html("<small> <b>Desert:</b> drylands and other open arid habitats, often sandy with very sparse vegetation); <br> <b>Rock:</b> rocky substrate typically with no or very little vegetation, including rocky outcrops, rocky coastlines, arid stony steppes, rocky mountaintops and mountain slopes); <br><b>Grassland:</b>  open dry to moist grass-dominated landscapes, at all elevations); <br> <b>Shrubland:</b> low stature bushy habitats, included thornscrub, thorny or arid savanna, caatinga, xerophytic shrubland and coastal scrub);<br> <b>Woodland:</b> medium stature tree-dominated habitats, including Acacia woodland, riparian woodlands, mangrove forests, forest edges, also more open parkland with scattered taller trees);<br> <b>Forest:</b> tall tree-dominated vegetation with more or less closed canopy, including palm forest); <br> <b>Human modified:</b> urban landscapes, intensive agriculture, gardens; <br> <b>Wetland:</b> wide range of freshwater aquatic habitats including lakes, marshes, swamps and reedbeds);<br> <b>Riverine:</b> associated with rivers and streams at all elevations); <br> <b>Coastal</b> intertidal zones within immediate vicinity of beaches, estuaries, brackish to salty marshes, including mudflats, lagoons, alkaline wetlands, coastal dunes and harbours);<br> <b>Marine:</b> pelagic, on sea near coasts, including species in the intertidal zone on beaches, and those pelagic species nesting near the sea on cliffs, islets and islands). </small>"),
+    #specifying which column to tie footnote to
+    locations = cells_column_labels(columns = Trophic_niche)) %>%
+  #setting parameters to left-justify footnotes in the table
+  tab_style(
+    #left-justify text
+    style = cell_text(align = "left"),
+    #specify footnotes as cells to left-justify 
+    locations = cells_footnotes()
+  ) 
+
+#View table
+Summ_habitat_tbl
+```
+
+### Visualizing Trophic niches as they relate to habitat types
+
+@fig-5 provides a visual representation of @tbl-2, showing the proportional breakdown of parts (trophic niche) that make up the whole (habitat type) as found in the Avonet Bird Life dataset. The stacked bar chart displays the percentage composition of each trophic niche within each habitat, allowing for easy comparison of trophic diversity across different habitat types. In this plot, habitats are grouped to enable easier comparison of similar habitat types. Water-based habitats, including Wetland, Riverine, Coastal, and Marine, are shown first, followed by terrestrial habitats, with Desert, Grassland, Woodland, Forest, and human-modified habitats shown last.
+
+This stacked bar chart allows easy visual comparison of trophic diversity. Readers can compare habitats that may seem more alike, such as wetland and riverine, or woodland and forest, to gain a better sense of the differences and similarities in each habitat, based on the species observances. I found it interesting to see that the Herbivore aquatic trophic niche was completely absent from the human-modified habitat type, given modern efforts to incorporate water features into human-modified environments. I also found it interesting that the terrestrial herbivore made up very small percentages of the various habitat types, though this could be due to the low count as demonstrated in @fig-3.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-5
+#| fig-cap: "Species Breakdown by Habitat and Trophic Niche"
+
+#### Creating stacked bar chart visualization #####
+# Remove any remaining NA values in Habitat before plotting
+Summ_habitat_plot <- Summ_habitat %>%
+  filter(!is.na(Habitat))
+
+#creating new plot, calling on filtered summarised dataframe, specifying X and Y axes for bars, and applying fill colour broken down by trophic_niche
+plot_habitat <- ggplot(Summ_habitat_plot, aes(x = Habitat, y = percent, fill = Trophic_niche)) +
+  #geom_col creates bars with heights based on the percent values from the data, and the bars are stacked by default due to multiple trophic niches occurring per habitat
+  geom_col() +  
+  #specifying colour palette to "Set3" from colour brewer (a categorical palette)
+  scale_fill_brewer(palette = "Set3") +
+  #Add labels for axes, legend, and title
+  labs(
+    x = "Habitat types",
+    y = "Percent of species (%)",
+    fill = "Trophic niche",
+    title = "Species Breakdown by Habitat and Trophic Niche") +
+  #Apply minimal theme for clean appearance
+  theme_minimal() +
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  #Rotate X-axis labels 75 degrees and adjust horizontal justification for readability
+  theme(axis.text.x = element_text(angle = 75, hjust = 1)
+  )
+
+#view new plot
+plot_habitat
+```
+
+## Mapping Bird Observations
+
+### Mapping Bird Ranges at the Global Perspective
+
+@fig-6, a map of global bird species range centroids, displays range centroids for bird species recorded in the Avonet Bird Life dataset. It is important to note that the dataset includes only centroid locations rather than polygons representing range extent, and as such the map is used to illustrate broad patterns in species distribution rather than actual range extents. To help reveal density patterns across the very large number of points, each centroid is symbolized with low opacity, allowing areas with many dense, overlapping points to appear darker and draw attention.
+
+The resulting visualization shows a clear concentration of species centroids near the equator, with far fewer in extreme northern and southern latitudes, suggesting greater species richness in tropical regions. However, while this pattern reflects where species ranges are centered, it does not visualize the range extents, and many species likely still occur in the northern and southern regions despite having equatorial range centroids. The map alone cannot show whether this pattern reflects true biodiversity, and does not effectively visualize or consider large migratory ranges.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| warning: false #ensuring warning does not appear in final output
+#| label: fig-6
+#| fig-cap: "Global Bird Species Range Centroids"
+
+#Create world map basemap for bird map
+world_map <- map_data("world")
+
+# plotting data onto worldmap using ggplot()
+birdmap_static <- ggplot() +
+  #specifying details of basemap, including colour of polygon and strokes, lat/long, group = group to keep polygons in expected shape
+  geom_polygon(data = world_map, aes(x = long, y = lat, group = group), 
+               fill = "#d7e0e5", color = "white", linewidth = 0.5) +
+  #Specifying point data to be visualized/plotted on map, calling on mydata
+  geom_point(data = mydata, 
+             #specifying aesthetic, using Range centroids as lat/long from dataset
+             aes(x = Centroid_long, 
+                 y = Centroid_lat, 
+                #Specifying point colour
+                color = "Species Range Centroid"), 
+             #specifying size (very small due to quantity of data points, aim not to                      overwhelm the page)
+             size = 0.5, 
+             #setting low opacity, to enable viewer to perceive density of points
+             alpha = 0.2) +
+  #specifying legend label for points, specifying colour 
+  scale_color_manual(values = c("Species Range Centroid" = "#304e45"),
+                     #name = NULL removes the legend title, since map only has one variable
+                     name = NULL) +  
+  #setting minimal theme
+  theme_minimal() +
+  #setting label parameters, html where appropriate
+  labs(title = "Global Bird Species Range Centroids", 
+       y = "Latitude", 
+       x = "Longitude") +
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 16),
+        #places the legend on map, rather than beside. c(X,y) sets position values on X/Y, using decimals representing percentages (i.e. 0.1 = 10% on X axis, -0.15 = -15% on Y axis)
+        legend.position = c(0.1,-0.15),
+        legend.text = element_text(color = "#304e45")) +
+ 
+  
+  #Add a North arrow
+  annotation_north_arrow(location = "bl", #bottom left 
+                         which_north = "true", 
+                         height = unit(1.5, "cm"), #height of arrow 
+                         width = unit(1, "cm"), #width of arrow
+                         pad_x = unit(0, "cm"), #X-based offset
+                         pad_y = unit(0.5, "cm"), #Y-based offset
+                         style = north_arrow_fancy_orienteering( #specifying new arrow style
+                           fill = c("#304e45", "#d7e0e5"), #north arrow colours
+                           line_col = "#304e45", #line colours
+                           text_col = "#304e45")) + #text colour
+  
+  # Add a scale_bar
+  annotation_scale(location = "bl", #bottom left
+                   width_hint = 0.2, #width of scale bar
+                   pad_y = unit(0, "cm"), #Y-based offset
+                   bar_cols = c("#304e45", "#d7e0e5"),#scalebar colours
+                   line_col = "#304e45", #line colour
+                   text_col = "#304e45") #setting text colour
+                   
+#view map
+birdmap_static
+
+#### Save Map ####
+#Save the map as a png file (static) to relative path
+ggsave("maps/birdmap_static.png", birdmap_static, width = 15, height = 8, dpi = 300)
+
+```
+
+::: callout-warning
+Please note: a scale bar has been included in Figure 5 for demonstrative purposes, however is inaccurate due to the global coverage of the map, and inherent distortions when visualizing at this scale.
+:::
+
+### Mapping bird ranges in North America (and beyond)
+
+#### Bird weight ranges \*\*\*\*\*NEW CONTENT\*\*\*\*\*
+
+The following map (@fig-7) shows the centroids of bird ranges in North America, categorized by mass. The bird ranges whose centroids fall within North America have been categorized into "Light" (with a mass of less than 500g), "Moderate" (with a mass ranging from 500g - 1000g) and "Heavy" (with a mass of greater than 1000g). Mass categories can be seen as different sized points on the map.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| warning: false #ensuring warning does not appear in final output
+#| label: fig-7
+#| fig-cap: "Bird weight ranges in North America."
+
+#Mutate using case_when to create a qualitative variable for mass
+mydata <- mydata %>%
+  #categorizing the data by mass, creating 3 new categories of light, mod, heavy by weight class
+  mutate(category = case_when(
+    Mass_g < 500 ~ "Light",
+    Mass_g >= 500 & Mass_g < 1000 ~ "Moderate",
+    Mass_g >= 1000 ~ "Heavy"
+  ))
+
+# Reordering data by category (Light -> Moderate -> heavy) 
+mydata <- mydata %>%
+  #reording new category variable to inform order placement
+  mutate(category = factor(category, levels = c("Light", "Moderate", "Heavy"))) %>%
+ #Arranging by category 
+   arrange(category)  
+
+#creating new "massmap"
+massmap <- ggplot() +
+  
+  # Plot the world map
+  geom_polygon(data = world_map, 
+               #specify7ing aesthetics for basemap
+               aes(x = long, y = lat, group = group), 
+               fill = "#d7e0e5", 
+               color = "white") +
+  
+  # Plot the points, grouping by new mass categories
+  geom_point(data = mydata, 
+             aes(x = Centroid_long, y = Centroid_lat, size = category), 
+             #setting opacity
+             alpha = 0.4, 
+             #setting colour
+             color = "#3c6157") +
+  
+  # Customize the theme and zoom in
+  theme_minimal() +
+  #specifying map range for a focus on North America
+  coord_quickmap(xlim = c(-170, -50), ylim = c(5, 83)) +
+  
+  # Add labels
+  labs(title = "Bird weight ranges in North America",
+       x = "Longitude",
+       y = "Latitude",
+      #specifying legend title
+        size = "Mass Category") +
+    theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 16),
+   legend.text = element_text(color = "#304e45")) +
+  
+  
+  # specifying the size scale for categories
+  scale_size_manual(values = c( 
+    "Light" = 1, 
+    "Moderate" = 5, 
+    "Heavy" = 10)) +
+
+#Adding a North arrow
+annotation_north_arrow(location = "bl", #bottom left 
+                       which_north = "true", 
+                       height = unit(1.5, "cm"), #height of arrow 
+                       width = unit(1, "cm"), #width of arrow
+                       pad_x = unit(0, "cm"), #X-based offset
+                       pad_y = unit(0.5, "cm"), #Y-based offset
+                       style = north_arrow_fancy_orienteering( #specifying new arrow style
+                         fill = c("#304e45", "#d7e0e5"), #north arrow colours
+                         line_col = "#304e45", #line colours
+                         text_col = "#304e45")) + #text colour
+  
+  # Adding a scale_bar
+  annotation_scale(location = "bl", #bottom left
+                   width_hint = 0.2, #width of scale bar
+                   pad_y = unit(0, "cm"), #Y-based offset
+                   bar_cols = c("#304e45", "#d7e0e5"),#scalebar colours
+                   line_col = "#304e45", #line colour
+                   text_col = "#304e45") #setting text colour
+
+
+# View map
+massmap
+
+#Save the map as a png file (static) to relative path
+ggsave("maps/massmap_static.png", massmap, width = 15, height = 8, dpi = 300)
+```
+
+The following interactive map (@fig-8) was developed with [Leaflet](https://rstudio.github.io/leaflet/index.html){target="_blank"} (opensource) to plot the range centroids of bird species from the Avonet Brid Life dataset. In this case, the map will automatically load with a viewport focused on North America, showcasing the various bird species whose range centroids fall in this area. Users can zoom in using their mouse scroll wheel or using the '+' or '-' buttons on the map. Select a point on the map to see what species that range centroid represents. While the default map loads to focus on North America, users can explore the global dataset by panning and zooming to visualize bird ranges in other parts of the world.
+
+This map uses the leaflet marker cluster behaviour, which dynamically clusters datapoints into groups to reduce visual clutter on the map portal. Clusters are represented with numbers, indicating how many points are present within that particular cluster. Users can click on a cluster number to zoom to that cluster extent, or hover over numbers to view a temporary polygon outlining the cluster extent on the map.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-8
+#| fig-cap: "Range Centroids of Bird Species"
+
+#Create an interactive map, callong on leaflet() for map library
+birdmap_interactive <- leaflet() %>%
+  
+  #addTiles() function to add base layer to map
+  addTiles() %>% 
+  #set default view of map on page load, note that these parameters can be adjusted to centre/zoom on area of interest
+  #set long/lat to centre of north america, zoom level 3
+  setView(lng = -100, lat = 45, zoom = 3) %>%
+  
+  #loading Esri's world imagery tile
+  addProviderTiles(providers$Esri.WorldImagery,
+                   #setting opacity of 0.5 to be layerd with another basemap
+                   options = providerTileOptions(opacity = 0.5)) %>%
+  #adding another basemap (VoyagerOnlyLabels) to layer with esri world imagery
+  addProviderTiles(providers$CartoDB.VoyagerOnlyLabels) %>%  
+  
+  #Add circle markers, calling on mydata to create points
+  addCircleMarkers(data = mydata, 
+    #mydata lat long values for point locations
+    ~Centroid_long, ~Centroid_lat,
+    #set parameters for circle appearance
+    color = "#c9e7de", #stroke color
+    fillColor = "#3d34f3", #Fill color
+    fillOpacity = 1, #setting opacity to be opaque
+    weight = 1, #stroke weight
+    radius = 5, #radius of point marker
+    #Add popup, specify text parameters using html 
+    popup = ~paste("Centroid of", "<b>", Species, "</b>", "range."),
+    #Enable clustering of points
+    clusterOptions = markerClusterOptions()
+  ) %>%
+  
+  #Add title to map 
+  addControl("<b>Range Centroids of Bird Species</b>", 
+             #setting location of the title on page
+             position = "topright") %>% 
+  
+  #Add a dynamic scale bar to the top right
+  addScaleBar(position = "topright")
+
+#View map
+birdmap_interactive
+
+#### Save map ####
+# Save map as an interactive HTML file
+saveWidget(birdmap_interactive, file = "maps/BirdMap_interactive.html")
+
+```
+
+#### \*\*\*\*\*NEW CONTENT \*\*\*\*\* (second interactive map)
+
+@fig-9 explores the bird range centroids in North America, colour coded to show the ranges in Culmen length (mm). This map clearly visualizes that most birds in North America have beak culmen lengths of less than approximately 100mm, however a few outliers are visible, such as the Pelecanus erythrorhynchos with a beak culmen length of 319.8 mm (the green point near the Saskatchewan-US border), or the Ardea herodias with a beak culmen length of 145.2 mm (the blue dot in central South Dakota). Clicking on points on the map will reveal a popup with specifications of the associated bird's culmen length.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-9
+#| fig-cap: "Bird Species range centroids by Culmen Length"
+
+#Create a colour palette for beak length
+palette <- colorNumeric(
+  palette = "viridis", 
+  #specifying the beak culmen length as colour palette indicator
+  domain = mydata$Beak_culmen_mm
+)
+
+# Create an interactive map
+beakmap_int <- leaflet() %>%
+  
+  # Add the base layer map (called tiles) (Default OpenStreetMap tiles)
+  addTiles() %>%  # Default OpenStreetMap tiles
+  #set long/lat to centre of north america, zoom level 3
+  setView(lng = -100, lat = 45, zoom = 3) %>%
+  
+ #loading Esri's world imagery tile
+  addProviderTiles(providers$Esri.WorldImagery,
+                   #setting opacity of 0.5 to be layerd with another basemap
+                   options = providerTileOptions(opacity = 0.5)) %>%
+  #adding another basemap (VoyagerOnlyLabels) to layer with esri world imagery
+  addProviderTiles(providers$CartoDB.VoyagerOnlyLabels) %>%  
+  
+  # Group data by magnitude and add popup text
+  addCircleMarkers(data = mydata, 
+                   ~Centroid_long, ~Centroid_lat, 
+                   color = ~palette(Beak_culmen_mm),  # Assign colors based on beak culmen length
+                   fillOpacity = 0.6, #setting opacity
+                   weight = 1, #stroke weight
+                   radius = 3, #radius of point marker
+                   popup = ~paste("Beak culmen length of", "<b>", Species, "</b>", ":", "<b>", Beak_culmen_mm, "</b>", "mm")) %>%  # Add popups
+  
+  # Add a color legend
+  addLegend("bottomright", 
+            pal = palette, 
+            values = mydata$Beak_culmen_mm, #calling on beak culmen length to inform legend
+            title = "Culmen length (mm)",
+            labFormat = labelFormat(digits = 1), 
+            opacity = 1) %>% 
+  
+  #Add title to map 
+  addControl("<b>Bird Species range centroids by Culmen Length</b>", 
+             #setting location of the title on page
+             position = "topright")
+
+# View map
+beakmap_int
+
+#### Save map ####
+# Save map as an interactive HTML file
+saveWidget(beakmap_int, file = "maps/beakmap_int.html")
+```
+
+## Regression modelling
+
+### Exploring relationships: Beak nare length & Beak culmen length
+
+The below plot uses ggplot() to plot raw data, comparing beak culmen length to beak nare length. As seen in @fig-10, there appears to be a strong relationship between these two variables. However, the relationship will be tested using linear regression modelling.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "show code" 
+#| echo: true 
+#| fig-align: center
+#| label: fig-10
+#| fig-cap: "Beak culmen length against beak nares"
+
+#creating a new scatter plot (plotR) to show raw visualization of culmen vs nare length
+#using ggplot() function to specify what dataframe to use
+plotR <- ggplot(data = mydata) + 
+  #using geom_point() to add point geometry, mapping culmen length on X axis, beak nares on Y axis
+  geom_point(mapping = aes(x=Beak_culmen_mm, y=Beak_nares_mm), 
+             #specifying size of point
+             size = 1, 
+             #specifying colour for points
+             color = "#3c6157",
+             #specifying transparency (where 1 is opaque). Enabling transparency to provide reader a better sense of point density, visualizing densely     packed points as opaque from overlap
+             alpha = 0.5) +
+             
+  #specifying a theme for plot 
+  theme_minimal() + 
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  # specifying labels for the X and Y axes 
+  labs(x = "Beak culmen length (mm)",
+       y = "Beak nares length (mm)", 
+       title = "Beak culmen length against beak nare length in bird species")
+
+#view plot 
+plotR
+
+```
+
+### Linear Regression Model
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| warning: false #ensuring warning does not appear in final output
+#| results: hide #suppressing the output for tidiness
+
+# creating a linear regression model, using lm(Y~X,data=mydata). Using beak nares as Y, beak culmen length as X to assess relationship
+M0<-lm(Beak_nares_mm~Beak_culmen_mm,data=mydata)
+#visualizing structure of model, including coefficients, residuals, y intercept, etc. 
+str(M0)
+#visualizing statistical summary of model
+summary(M0)
+```
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| warning: false #ensuring warning does not appear in final output
+#| results: hide
+
+#Add residuals from linear regression model above (i.e. M0) to dataframe to be able to plot
+mydata<-mydata%>%
+  #creating new column with residual values from M0
+  add_residuals(M0)%>%
+  #creating new column with predictions (fitted values) from M0 
+  add_predictions(M0)
+#creating table to check distribution of residual values
+table(mydata$resid, useNA = "always")
+#viewing updated structure of the dataframe with new residual and predicitons variables
+str(mydata)
+```
+
+I created a linear regression model using the following equation: $$ 
+\text{Beak nare length} = \beta_1 + \beta_2 * \text{Beak culmen length}_i + \epsilon_i
+$$ Where the model estimates $$
+\text{Beak nare length} \; at \; \text{Beak culmen length}_i
+$$
+
+### Testing the relationship: Checking residual distributions
+
+The below historgram (@fig-11) is showing the distribution of residuals from the linear regression model. The histogram shows that there is a fairly normal distribution of residuals, suggesting that the model fits the data relatively well since most residuals are close to 0, with fewer extreme values that deviate away from 0.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| label: fig-11
+#| fig-cap: "Distribution of residuals from linear model"
+#| warning: false #ensuring warning does not appear in final output
+
+#using ggplot() to generate historgram to view residuals, assess distribution
+#ideally, residuals should be relatively normally distributed
+ggplot(mydata)+
+  #using "resid" variable to plot, specifying colours
+  geom_histogram(aes(x=resid), fill= "#3c6258", col= "#78c2ad")+
+  #specifying theme and labels for histogram
+  theme_minimal()+
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  labs(
+    x = "Residuals",
+    y = "Frequency",
+    title = "Distribution of residuals")
+
+```
+
+### Testing the relationship: Residuals against fitted values
+
+#### \*\*\*\*\*UPDATED/NEW CONTENT (PLOT ANNOTATION)\*\*\*\*\*
+
+@fig-12 showing residuals vs fitted values, on the other hand, shows residual points distributed in a fan pattern about the horizontal reference line ( where y=0), with residual values spreading further apart as the fitted values increase. The pattern is visualized with the translucent lines helping to illustrate the pattern. This suggests that the model is not a good fit for the data, since predictions (i.e. fitted values) about the data are not consistent about the reference line.
+
+```{r}
+#| code-fold: true 
+#| code-summary: "Show code" 
+#| echo: true 
+#| label: fig-12
+#| fig-cap: "Residuals against fitted values from linear model"
+#| warning: false #ensuring warning does not appear in final output
+
+#using ggplot() to plot the fitted values (predicitons) against the residuals, to determine effectiveness of model
+ggplot(mydata)+
+  #plotting x as predictied (fitted) values, y as residuals
+  geom_point(aes(x=pred,y=resid), 
+             #specifying size of point
+             size = 1.5, 
+             #specifying colour for points
+             color = "#3c6157",
+             #specifying transparency (where 1 is opaque). Enabling transparency to provide reader a better sense of point density, visualizing densly packed points as opaque from overlap
+             alpha = 0.5) +
+  #adding a line at the y intercept to interpret values along y intercept
+  geom_hline(yintercept=0, 
+             #specifying line style
+             linetype='dashed', 
+             #specifying line colour
+             col="#26208e", 
+             #specifying line width
+             linewidth = 1.5) +
+  #specifying theme, labels
+  theme_minimal()+
+  #formatting title, hjust = 0.5 centres the title, colour and size specified
+  theme(plot.title = element_text(hjust = 0.5, color = "#304e45", size = 15)) +
+  labs(
+    x = "Fitted Values",
+    y = "Residuals",
+    title = "Residuals against fitted values") +
+  #Adding text annotation to plot, summarizing plot findings
+  annotate("text", x = 245, y = -40,
+            label = "This model is not a good fit for the data.",
+            size = 5,
+            colour = "#26208e") +
+ #annotating  line to illustrate fan
+  annotate("segment", 
+          x = 0, xend = 150, 
+          y = 8, yend = 50, 
+          colour = "#26208e", 
+          size=1, 
+          alpha=0.3)+
+  #annotating second line to illustrate fan
+  annotate("segment", 
+          x = 0, xend = 90, 
+          y = -2, yend = -60, 
+          colour = "#26208e", 
+          size=1, 
+          alpha=0.3)
+
+```
